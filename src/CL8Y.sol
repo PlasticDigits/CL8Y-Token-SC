@@ -36,11 +36,18 @@ As Presented By:
 /// @title CL8Y Token Contract
 /// @notice Implementation of the CeramicLiberty.com token with tax and max balance mechanics
 /// @dev Extends ERC20 with burning capability, permit functionality, and ownership controls
+/// @dev Implements anti-snipe protection for the first 5 seconds of trading
+/// @dev Trading cannot be closed once opened
+/// @dev Sell burn tax cannot be increased once reduced
+/// @dev Max wallet balance cannot be decreased once set
 contract CL8Y is ERC20, ERC20Burnable, ERC20Permit, Ownable {
     using SafeERC20 for IERC20;
 
     uint256 public maxBalance = 1_000 ether;
     uint256 public sellTaxBasis = 3_000; // 30.00%
+
+    uint256 public constant ANTI_SNIPE_BURN = 5_000; // 50.00% for anti-snipe
+    uint256 public constant ANTI_SNIPE_DURATION = 5 seconds; // first 5 seconds of trading
 
     address public immutable basePairV2;
     uint256 public tradingOpenTime;
@@ -91,19 +98,30 @@ contract CL8Y is ERC20, ERC20Burnable, ERC20Permit, Ownable {
             value == 0 ||
             isOwner
         ) {
+            // If trading is not open, and the sender is not the owner, revert.
             if (!tradingOpen() && (!isOwner)) {
                 revert TradingNotOpen();
             }
-            //Default behavior for mints, burns, exempt, transfers
-            super._update(from, to, value);
+            // If trading open for 5 seconds or less, charge the anti-snipe burn on buys
+            if (
+                from == basePairV2 && // is a buy
+                tradingOpen() && // trading is open
+                block.timestamp - tradingOpenTime <= ANTI_SNIPE_DURATION // trading open for 5 seconds or less
+            ) {
+                uint256 tax = (value * ANTI_SNIPE_BURN) / 10_000;
+                super._update(from, to, value);
+                super._burn(to, tax);
+            } else {
+                //Default behavior for mints, burns, exempt, transfers
+                super._update(from, to, value);
+            }
         } else {
             //sell
             uint256 tax = (value * sellTaxBasis) / 10_000;
-            super._burn(from, tax);
             super._update(from, to, value - tax);
+            super._burn(from, tax);
         }
 
-        _revertIfStandardWalletAndOverMaxHolding(from);
         _revertIfStandardWalletAndOverMaxHolding(to);
     }
 
@@ -177,6 +195,8 @@ contract CL8Y is ERC20, ERC20Burnable, ERC20Permit, Ownable {
     }
 
     /// @notice Allows the owner to set the trading open time
+    /// @dev Can be used to instantly open trading, or set a future time
+    /// @dev Cannot be used to close trading
     /// @dev Can only be called by the owner
     /// @param to The timestamp when trading becomes enabled
     function ownerSetTradingOpenTime(uint256 to) external onlyOwner {
