@@ -180,7 +180,7 @@ contract CL8Y is ERC20, ERC20Burnable, ERC20Permit, Ownable {
     /// @dev Can only be called by the owner
     /// @param to The timestamp when trading becomes enabled
     function ownerSetTradingOpenTime(uint256 to) external onlyOwner {
-        // Can only set the trading open time if its already open.
+        // Can only set the trading open time if its not currently open.
         if (tradingOpen()) {
             revert TradingAlreadyOpen();
         }
