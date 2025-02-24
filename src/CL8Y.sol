@@ -43,12 +43,12 @@ contract CL8Y is ERC20, ERC20Burnable, ERC20Permit, Ownable {
     uint256 public sellTaxBasis = 3_000; // 30.00%
 
     address public immutable basePairV2;
-    uint256 public immutable tradingOpenTime;
+    uint256 public tradingOpenTime;
 
     error OverMax(uint256 amount, uint256 max);
     error UnderMin(uint256 amount, uint256 max);
     error TradingNotOpen();
-
+    error TradingAlreadyOpen();
     event MaxBalanceUpdated(uint256 oldMaxBalance, uint256 newMaxBalance);
     event SellTaxBasisUpdated(uint256 oldSellTaxBasis, uint256 newSellTaxBasis);
 
@@ -174,6 +174,17 @@ contract CL8Y is ERC20, ERC20Burnable, ERC20Permit, Ownable {
     /// @param _token The ERC20 token contract to rescue
     function ownerRescueTokens(IERC20 _token) external onlyOwner {
         _token.transfer(msg.sender, _token.balanceOf(address(this)));
+    }
+
+    /// @notice Allows the owner to set the trading open time
+    /// @dev Can only be called by the owner
+    /// @param to The timestamp when trading becomes enabled
+    function ownerSetTradingOpenTime(uint256 to) external onlyOwner {
+        // Can only set the trading open time if its already open.
+        if (tradingOpen()) {
+            revert TradingAlreadyOpen();
+        }
+        tradingOpenTime = to;
     }
 
     /// @notice Internal function to check if a wallet exceeds maximum holding limit
