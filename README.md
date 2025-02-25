@@ -15,7 +15,7 @@ CL8Y (Ceramic Liberty) is a deflationary token designed to sustainably fund open
 ### Tokenomics
 
 - **Initial Sell Tax**: 30% (burned)
-- **Tax Reduction Schedule**: 
+- **Tax Reduction Schedule**:
   - 10% at 24 hours
   - 1% at 7 days
   - 0.25% at $10M market cap
@@ -39,6 +39,7 @@ CL8Y serves as a sustainable funding mechanism for open-source blockchain develo
 ### Technical Implementation
 
 The smart contract implements:
+
 - ERC20 standard with burn functionality
 - Permit extension for gasless approvals
 - Dynamic tax and wallet limit adjustments
@@ -46,11 +47,14 @@ The smart contract implements:
 - Owner controls with security timeouts
 
 ## License
+
 License: GPL-3.0
 
 ## build
+
 forge build --via-ir
 
 ## deployment
+
 Key variables are set in the script, and should be updated correctly for the network.
-forge script script/v2/DeployCL8Y.s.sol:DeployCL8Y --broadcast --verify -vvv --rpc-url $RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY -i 1 --sender $DEPLOYER_ADDRESS
+forge script script/DeployCL8Y.s.sol:DeployCL8Y --broadcast --verify -vvv --rpc-url $RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY -i 1 --sender $DEPLOYER_ADDRESS

@@ -122,7 +122,9 @@ contract CL8Y is ERC20, ERC20Burnable, ERC20Permit, Ownable {
             super._burn(from, tax);
         }
 
-        _revertIfStandardWalletAndOverMaxHolding(to);
+        if (from != owner()) {
+            _revertIfStandardWalletAndOverMaxHolding(to);
+        }
     }
 
     /// @notice Checks if trading is currently open
