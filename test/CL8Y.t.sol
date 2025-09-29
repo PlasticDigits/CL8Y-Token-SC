@@ -75,8 +75,8 @@ contract CL8YIntegrationTest is Test {
         // 8. Add blacklist as a guard module to GuardERC20
         guardERC20.addGuardModule(address(blacklist));
 
-        // 9. Deploy CL8Y_v2 token with GuardERC20 as the guard
-        token = new CL8Y_v2(guardERC20);
+        // 9. Deploy CL8Y_v2 token with GuardERC20 as the guard and owner as initial holder
+        token = new CL8Y_v2(guardERC20, owner);
 
         vm.stopPrank();
     }

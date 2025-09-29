@@ -7,7 +7,13 @@ CL8Y (Ceramic Liberty) is a deflationary token designed to sustainably fund open
 AccessManager BSC: `0x5823a01A5372B779cB091e47DBBb176F2831b4c7`
 DatastoreSetAddress BSC: `0x8a18c91387149806BE5F7c1ebc6fE99e12d183dA`
 GuardERC20 BSC: `0x417580DF7eE35FFA6286255b55B456c992657fB9`
-Contract Address BSC: `0x8F452a1fdd388A45e1080992eFF051b4dd9048d2`
+BlacklistSenderOnly BSC: `0x3009E9de998E62D75f8342109270c9F919F3a885`
+CL8Y Address BSC: `0x8F452a1fdd388A45e1080992eFF051b4dd9048d2`
+
+### AccessManager Roles
+
+1: Guard Module Manager
+2: Blacklist Manager
 
 ### Core Features
 
