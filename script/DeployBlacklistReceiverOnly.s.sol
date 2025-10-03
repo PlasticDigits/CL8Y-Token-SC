@@ -3,12 +3,12 @@
 pragma solidity >=0.8.23;
 
 import {Script} from "forge-std/Script.sol";
-import {BlacklistSenderOnly} from "../src/BlacklistSenderOnly.sol";
+import {BlacklistReceiverOnly} from "../src/BlacklistReceiverOnly.sol";
 
-contract DeployBlacklistSenderOnly is Script {
+contract DeployBlacklistReceiverOnly is Script {
     function run() public {
         vm.startBroadcast();
-        new BlacklistSenderOnly(
+        new BlacklistReceiverOnly(
             address(0x5823a01A5372B779cB091e47DBBb176F2831b4c7)
         );
         vm.stopBroadcast();
