@@ -17,15 +17,10 @@ contract DeployCL8Y_v2 is Script {
 
     function run() public {
         vm.startBroadcast();
-        accessManager = new AccessManager(
-            0x745A676C5c472b50B50e18D4b59e9AeEEc597046
-        );
+        accessManager = new AccessManager(0x745A676C5c472b50B50e18D4b59e9AeEEc597046);
         datastoreAddress = new DatastoreSetAddress();
         guardERC20 = new GuardERC20(address(accessManager), datastoreAddress);
-        new CL8Y_v2{salt: keccak256("CL8Y_v2.1")}(
-            IGuardERC20(guardERC20),
-            0xFAC4C56258941D445Afda6BB2Fa87b493A65B8a1
-        );
+        new CL8Y_v2{salt: keccak256("CL8Y_v2.1")}(IGuardERC20(guardERC20), 0xFAC4C56258941D445Afda6BB2Fa87b493A65B8a1);
         vm.stopBroadcast();
     }
 }

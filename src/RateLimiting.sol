@@ -4,246 +4,298 @@ pragma solidity ^0.8.30;
 
 import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IGuardERC20} from "./interfaces/IGuardERC20.sol";
 
 /// @title RateLimiting
 /// @author Plastic Digits
-/// @notice Rate limiting for the CL8Y token.
-/// @dev This contract is responsible for the rate limiting of tokens, with opt out.
-/// @dev Also includes an optional locking feature, to lock an account for a period of time.
-contract RateLimiting is AccessManaged {
+/// @notice Rate limiting for tokens with opt-in/opt-out support and admin overrides.
+/// @dev This contract enforces configurable rate limits with opt-in/opt-out support and admin overrides.
+/// @dev Solidity introduced custom require errors in 0.8.26 (legacy pipeline in 0.8.27), so we use them here.
+contract RateLimiting is AccessManaged, IGuardERC20 {
     enum AccountStatus {
-        DEFAULT, // 0
-        OPT_IN, // 1
-        OPT_OUT, // 2
-        OPT_IN_OVERRIDE, // 3
-        OPT_OUT_OVERRIDE // 4
-
+        DEFAULT,
+        OPT_IN,
+        OPT_OUT,
+        OPT_IN_OVERRIDE,
+        OPT_OUT_OVERRIDE
     }
 
-    struct LargeTransferRequest {
-        uint256 amount;
-        uint256 readyTimestamp;
-    }
-
-    struct CurentUsage {
-        uint256 transferCumulativeTotal;
-        uint256 lastTransferTimestamp;
-    }
-
-    struct TokenDefaultConfig {
+    struct DefaultConfig {
         uint256 rateLimitInterval;
-        uint256 rateLimitTriggerBalance;
         uint256 rateLimit;
-        bool isRegistered;
     }
 
-    struct TokenAccountConfig {
+    struct AccountConfig {
         uint256 rateLimitInterval;
-        uint256 rateLimitTriggerBalance;
         uint256 rateLimit;
         AccountStatus status;
     }
 
-    mapping(IERC20 token => TokenDefaultConfig config) public tokenDefaultConfig;
-    mapping(IERC20 token => mapping(address account => TokenAccountConfig config)) public tokenAccountConfig;
-    mapping(IERC20 token => mapping(address account => LargeTransferRequest largeTransferRequest)) public
-        largeTransferRequest;
-    mapping(IERC20 token => mapping(address account => CurentUsage usage)) public currentUsage;
+    struct CurrentUsage {
+        uint256 transferCumulativeTotal;
+        uint256 windowId;
+    }
 
-    mapping(IERC20 token => mapping(address account => uint256 optOutRequestTimestamp)) public optOutRequestTimestamp;
-    mapping(IERC20 token => mapping(address account => uint256 optInRequestTimestamp)) public optInRequestTimestamp;
+    IERC20 public immutable cl8y;
+    DefaultConfig public defaultConfig;
 
-    error RateLimitExceeded(IERC20 token, address account);
-    error OverrideActive(IERC20 token, address account);
-    error TokenNotRegistered(IERC20 token);
-    error OptOutNotRequested(IERC20 token, address account);
-    error OptOutNotReady(IERC20 token, address account);
-    error OptInNotRequested(IERC20 token, address account);
-    error OptInNotReady(IERC20 token, address account);
+    mapping(address account => AccountConfig config) public accountConfig;
+    mapping(address account => CurrentUsage usage) public currentUsage;
+    mapping(address account => uint256 timestamp) public optOutRequestTimestamp;
+    mapping(address account => uint256 timestamp) public optInRequestTimestamp;
 
-    constructor(address _initialAuthority) AccessManaged(_initialAuthority) {}
+    error InvalidSender(address sender);
+    error RateLimitExceeded(address account);
+    error OverrideActive(address account);
+    error OptOutNotRequested(address account);
+    error OptOutNotReady(address account);
+    error OptInNotRequested(address account);
+    error OptInNotReady(address account);
 
-    // Public functions
-    function requestLargeTransfer(IERC20 token, uint256 amount) external {
-        TokenAccountConfig memory config = tokenAccountConfig[token][msg.sender];
-        uint256 delay = 0;
-        if (config.status == AccountStatus.OPT_OUT || config.status == AccountStatus.OPT_OUT_OVERRIDE) {
-            delay = 0;
-        } else if (config.status == AccountStatus.OPT_IN || config.status == AccountStatus.OPT_IN_OVERRIDE) {
-            delay = config.rateLimitInterval;
-        } else {
-            // default to the default config
-            delay = tokenDefaultConfig[token].rateLimitInterval;
-        }
-
-        largeTransferRequest[token][msg.sender] = LargeTransferRequest(amount, block.timestamp + delay);
+    constructor(
+        address initialAuthority,
+        IERC20 token,
+        uint256 rateLimitInterval,
+        uint256 rateLimit
+    ) AccessManaged(initialAuthority) {
+        cl8y = token;
+        defaultConfig = DefaultConfig(rateLimitInterval, rateLimit);
     }
 
     /// @notice Request to opt out of rate limiting, usually takes one day.
-    /// @dev This function will set the opt out request timestamp to the current block timestamp.
-    /// @dev The opt out request will be activated after the rate limit interval has passed.
-    function optOutRequest(IERC20 token) external {
-        _revertIfOverride(token, msg.sender);
-        optOutRequestTimestamp[token][msg.sender] = block.timestamp;
+    function optOutRequest() external {
+        _revertIfOverride(msg.sender);
+        optOutRequestTimestamp[msg.sender] = block.timestamp;
     }
 
     /// @notice Activate the opt out request. Must call optOutRequest first.
-    /// @dev This function will set the account status to opt out.
-    /// @dev The opt out request will be deactivated after the rate limit interval has passed.
-    function optOutActivate(IERC20 token) external {
-        _revertIfOverride(token, msg.sender);
-        uint256 timestamp = optOutRequestTimestamp[token][msg.sender];
-        require(timestamp != 0, OptOutNotRequested(token, msg.sender));
-        uint256 rateLimitInterval;
-        if (tokenAccountConfig[token][msg.sender].status == AccountStatus.OPT_IN) {
-            rateLimitInterval = tokenAccountConfig[token][msg.sender].rateLimitInterval;
-        } else {
-            rateLimitInterval = tokenDefaultConfig[token].rateLimitInterval;
+    function optOutActivate() external {
+        _revertIfOverride(msg.sender);
+
+        uint256 timestamp = optOutRequestTimestamp[msg.sender];
+        if (timestamp == 0) revert OptOutNotRequested(msg.sender);
+
+        uint256 interval = defaultConfig.rateLimitInterval;
+        AccountStatus status = accountConfig[msg.sender].status;
+        if (status == AccountStatus.OPT_IN) {
+            interval = accountConfig[msg.sender].rateLimitInterval;
         }
-        require(rateLimitInterval + timestamp < block.timestamp, OptOutNotReady(token, msg.sender));
-        tokenAccountConfig[token][msg.sender].status = AccountStatus.OPT_OUT;
-        optOutRequestTimestamp[token][msg.sender] = 0;
-    }
 
-    /// @notice Activate the opt in request. Must call optInRequest first.
-    /// @dev This function will set the account status to opt in.
-    /// @dev The opt in request will be deactivated after the rate limit interval has passed.
-    function optInRequest(IERC20 token) external {
-        _revertIfOverride(token, msg.sender);
-        optInRequestTimestamp[token][msg.sender] = block.timestamp;
-    }
-
-    function optInActivate(IERC20 token, uint256 rateLimitInterval, uint256 rateLimitTriggerBalance, uint256 rateLimit)
-        external
-    {
-        _revertIfOverride(token, msg.sender);
-        uint256 timestamp = optInRequestTimestamp[token][msg.sender];
-        require(timestamp != 0, OptInNotRequested(token, msg.sender));
-        uint256 interval;
-        if (tokenAccountConfig[token][msg.sender].status == AccountStatus.OPT_IN) {
-            interval = tokenAccountConfig[token][msg.sender].rateLimitInterval;
-        } else {
-            interval = tokenDefaultConfig[token].rateLimitInterval;
+        if (timestamp + interval >= block.timestamp) {
+            revert OptOutNotReady(msg.sender);
         }
-        require(interval + timestamp < block.timestamp, OptInNotReady(token, msg.sender));
-        tokenAccountConfig[token][msg.sender] =
-            TokenAccountConfig(interval, rateLimitTriggerBalance, rateLimit, AccountStatus.OPT_IN);
+
+        accountConfig[msg.sender].status = AccountStatus.OPT_OUT;
+        optOutRequestTimestamp[msg.sender] = 0;
     }
 
-    function reset(IERC20 token) external {
-        _revertIfOverride(token, msg.sender);
-        tokenAccountConfig[token][msg.sender].status = AccountStatus.DEFAULT;
+    /// @notice Submit an opt-in request to use customised rate limiting settings.
+    function optInRequest() external {
+        _revertIfOverride(msg.sender);
+        optInRequestTimestamp[msg.sender] = block.timestamp;
     }
 
-    // token functions
-    function updateOnTransfer(address account, uint256 amount) external {
-        IERC20 token = IERC20(msg.sender);
-        require(tokenDefaultConfig[token].isRegistered, TokenNotRegistered(token));
+    /// @notice Activate the opt-in request with custom limits.
+    function optInActivate(
+        uint256 rateLimitInterval,
+        uint256 rateLimit
+    ) external {
+        _revertIfOverride(msg.sender);
 
-        // Check if the account is opt out
-        TokenAccountConfig memory config = tokenAccountConfig[token][account];
-        if (config.status == AccountStatus.OPT_OUT || config.status == AccountStatus.OPT_OUT_OVERRIDE) {
-            return;
+        uint256 timestamp = optInRequestTimestamp[msg.sender];
+        if (timestamp == 0) revert OptInNotRequested(msg.sender);
+
+        uint256 interval = defaultConfig.rateLimitInterval;
+        if (accountConfig[msg.sender].status == AccountStatus.OPT_IN) {
+            interval = accountConfig[msg.sender].rateLimitInterval;
         }
-        // Check if the account is big enough to be rate limited
-        uint256 accountBalance = IERC20(token).balanceOf(account);
+
+        if (timestamp + interval >= block.timestamp) {
+            revert OptInNotReady(msg.sender);
+        }
+
+        accountConfig[msg.sender] = AccountConfig(
+            rateLimitInterval,
+            rateLimit,
+            AccountStatus.OPT_IN
+        );
+        optInRequestTimestamp[msg.sender] = 0;
+    }
+
+    /// @notice Guard hook executed by `cl8y` before processing a transfer.
+    function check(address sender, address, uint256 amount) external {
+        if (msg.sender != address(cl8y)) revert InvalidSender(msg.sender);
+
+        AccountConfig memory config = accountConfig[sender];
+        AccountStatus status = config.status;
+
         if (
-            config.status == AccountStatus.OPT_IN
-                || config.status == AccountStatus.OPT_IN_OVERRIDE && accountBalance < config.rateLimitTriggerBalance
+            status == AccountStatus.OPT_OUT ||
+            status == AccountStatus.OPT_OUT_OVERRIDE
         ) {
             return;
         }
-        TokenDefaultConfig memory defaultConfig = tokenDefaultConfig[token];
-        if (config.status == AccountStatus.DEFAULT && accountBalance < defaultConfig.rateLimitTriggerBalance) {
-            return;
-        }
-        CurentUsage storage usage = currentUsage[token][account];
 
-        // Based on the account status, get the rate limit and rate limit interval
-        uint256 rateLimit;
-        uint256 rateLimitInterval;
-        if (config.status == AccountStatus.OPT_IN || config.status == AccountStatus.OPT_IN_OVERRIDE) {
-            rateLimit = config.rateLimit;
+        uint256 rateLimitInterval = defaultConfig.rateLimitInterval;
+        uint256 rateLimit = defaultConfig.rateLimit;
+
+        if (
+            status == AccountStatus.OPT_IN ||
+            status == AccountStatus.OPT_IN_OVERRIDE
+        ) {
             rateLimitInterval = config.rateLimitInterval;
-        } else {
-            rateLimit = defaultConfig.rateLimit;
-            rateLimitInterval = defaultConfig.rateLimitInterval;
+            rateLimit = config.rateLimit;
         }
 
-        // Check if the currentUsage is too old, if so reset it
-        if (usage.lastTransferTimestamp + rateLimitInterval < block.timestamp) {
-            usage.transferCumulativeTotal = 0;
-            usage.lastTransferTimestamp = block.timestamp;
-        }
+        if (rateLimitInterval == 0) revert RateLimitIntervalZero();
 
-        //TODO: Fix below
+        CurrentUsage storage usage = currentUsage[sender];
 
-        /*
+        uint256 currentWindowId = block.timestamp / rateLimitInterval;
+        uint256 balance = cl8y.balanceOf(sender);
 
-        // For large transfers, first we need to check if the amount would be rate limited without the large transfer.
-        // If it would be rate limited, then we need to rate limit if the amount is larger than the transfer request - if so, its rate limited.
-        // If the amoutn is smaller than or equal to the transfer request, reset the large transfer request and return.
-        LargeTransferRequest storage req = largeTransferRequest[token][account];
-        if (
-            req.amount > 0 && req.readyTimestamp < block.timestamp && usage.transferCumulativeTotal + amount > rateLimit
-        ) {
-            if (amount > req.amount) {
-                revert RateLimitExceeded(token, account);
-            } else {
-                req.amount = 0;
-                req.readyTimestamp = 0;
+        // Optimization: if no active window and balance <= rate limit, skip rate limiting
+        // Small wallets can sell all without triggering rate limit
+        // Prevents high volume wallets with low balances from triggering rate limit
+        if (usage.windowId != currentWindowId) {
+            if (balance <= rateLimit) {
+                usage.transferCumulativeTotal = 0;
+                usage.windowId = 0;
                 return;
             }
+        } else if (usage.transferCumulativeTotal == 0 && balance <= rateLimit) {
+            return;
         }
 
-        // Check if the account is rate limited
-        if (usage.transferCumulativeTotal + amount > defaultConfig.rateLimit) {
-            revert RateLimitExceeded(token, account);
-        }
-        currentUsage[token][account] = CurentUsage(usage.transferCumulativeTotal + amount, block.timestamp);*/
+        uint256 newTotal = usage.transferCumulativeTotal + amount;
+        if (newTotal > rateLimit) revert RateLimitExceeded(sender);
+
+        usage.transferCumulativeTotal = newTotal;
+        usage.windowId = currentWindowId;
     }
 
     // administrative functions
-    function setTokenDefaultConfig(
-        IERC20 token,
+    function setDefaultConfig(
         uint256 rateLimitInterval,
-        uint256 rateLimitTriggerBalance,
-        uint256 rateLimit,
-        bool isRegistered
+        uint256 rateLimit
     ) external restricted {
-        tokenDefaultConfig[token] =
-            TokenDefaultConfig(rateLimitInterval, rateLimitTriggerBalance, rateLimit, isRegistered);
+        defaultConfig = DefaultConfig(rateLimitInterval, rateLimit);
     }
 
-    function setTokenAccountConfig(
-        IERC20 token,
+    function setAccountConfig(
         address account,
         uint256 rateLimitInterval,
-        uint256 rateLimitTriggerBalance,
         uint256 rateLimit,
         AccountStatus status
     ) external restricted {
-        tokenAccountConfig[token][account] =
-            TokenAccountConfig(rateLimitInterval, rateLimitTriggerBalance, rateLimit, status);
+        accountConfig[account] = AccountConfig(
+            rateLimitInterval,
+            rateLimit,
+            status
+        );
     }
 
-    function setLargeTransferRequest(IERC20 token, address account, uint256 amount) external restricted {
-        largeTransferRequest[token][account] = LargeTransferRequest(amount, block.timestamp);
+    function setCurrentUsage(
+        address account,
+        uint256 amount,
+        uint256 windowId
+    ) external restricted {
+        currentUsage[account] = CurrentUsage(amount, windowId);
     }
 
-    function setCurrentUsage(IERC20 token, address account, uint256 amount) external restricted {
-        currentUsage[token][account] = CurentUsage(amount, block.timestamp);
+    function setAccountToDefault(address account) external restricted {
+        delete accountConfig[account];
     }
 
-    function setAccountToDefault(IERC20 token, address account) external restricted {
-        tokenAccountConfig[token][account].status = AccountStatus.DEFAULT;
-    }
+    // View functions
+    /// @notice Get the amount available to transfer in the current window for an account
+    /// @param account The account to check
+    /// @return The amount available to transfer (type(uint256).max if opted out)
+    function availableToTransfer(
+        address account
+    ) external view returns (uint256) {
+        AccountConfig memory config = accountConfig[account];
+        AccountStatus status = config.status;
 
-    // Revert internal functions
-    function _revertIfOverride(IERC20 token, address account) internal view {
+        // If opted out, no limit
         if (
-            tokenAccountConfig[token][account].status == AccountStatus.OPT_IN_OVERRIDE
-                || tokenAccountConfig[token][account].status == AccountStatus.OPT_OUT_OVERRIDE
-        ) revert OverrideActive(token, account);
+            status == AccountStatus.OPT_OUT ||
+            status == AccountStatus.OPT_OUT_OVERRIDE
+        ) {
+            return type(uint256).max;
+        }
+
+        uint256 rateLimitInterval = defaultConfig.rateLimitInterval;
+        uint256 rateLimit = defaultConfig.rateLimit;
+
+        if (
+            status == AccountStatus.OPT_IN ||
+            status == AccountStatus.OPT_IN_OVERRIDE
+        ) {
+            rateLimitInterval = config.rateLimitInterval;
+            rateLimit = config.rateLimit;
+        }
+
+        if (rateLimitInterval == 0) return 0;
+
+        CurrentUsage storage usage = currentUsage[account];
+        uint256 currentWindowId = block.timestamp / rateLimitInterval;
+
+        // If different window or no usage yet, full limit is available
+        if (usage.windowId != currentWindowId) {
+            return rateLimit;
+        }
+
+        // Return remaining limit in current window
+        if (usage.transferCumulativeTotal >= rateLimit) {
+            return 0;
+        }
+        return rateLimit - usage.transferCumulativeTotal;
     }
+
+    /// @notice Get the timestamp when the next window starts for an account
+    /// @param account The account to check
+    /// @return The timestamp when the next window starts, or current timestamp if no active window
+    function nextWindowAt(address account) external view returns (uint256) {
+        AccountConfig memory config = accountConfig[account];
+        AccountStatus status = config.status;
+
+        uint256 rateLimitInterval = defaultConfig.rateLimitInterval;
+
+        if (
+            status == AccountStatus.OPT_IN ||
+            status == AccountStatus.OPT_IN_OVERRIDE
+        ) {
+            rateLimitInterval = config.rateLimitInterval;
+        }
+
+        if (rateLimitInterval == 0) return block.timestamp;
+
+        CurrentUsage storage usage = currentUsage[account];
+        uint256 currentWindowId = block.timestamp / rateLimitInterval;
+
+        // If different window or no usage yet, return current timestamp
+        if (
+            usage.windowId != currentWindowId ||
+            usage.transferCumulativeTotal == 0
+        ) {
+            return block.timestamp;
+        }
+
+        // Return when next window starts
+        return (usage.windowId + 1) * rateLimitInterval;
+    }
+
+    // Internal helpers
+    function _revertIfOverride(address account) internal view {
+        AccountStatus status = accountConfig[account].status;
+        if (
+            status == AccountStatus.OPT_IN_OVERRIDE ||
+            status == AccountStatus.OPT_OUT_OVERRIDE
+        ) {
+            revert OverrideActive(account);
+        }
+    }
+
+    error RateLimitIntervalZero();
 }

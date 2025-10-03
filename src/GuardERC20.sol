@@ -8,13 +8,9 @@ import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManage
 contract GuardERC20 is IGuardERC20, DatastoreSetAddress, AccessManaged {
     DatastoreSetAddress public immutable datastoreAddress;
 
-    DatastoreSetIdAddress public constant GUARD_MODULES =
-        DatastoreSetIdAddress.wrap(keccak256("GUARD_MODULES"));
+    DatastoreSetIdAddress public constant GUARD_MODULES = DatastoreSetIdAddress.wrap(keccak256("GUARD_MODULES"));
 
-    constructor(
-        address _initialAuthority,
-        DatastoreSetAddress _datastoreAddress
-    ) AccessManaged(_initialAuthority) {
+    constructor(address _initialAuthority, DatastoreSetAddress _datastoreAddress) AccessManaged(_initialAuthority) {
         datastoreAddress = _datastoreAddress;
     }
 
@@ -23,11 +19,7 @@ contract GuardERC20 is IGuardERC20, DatastoreSetAddress, AccessManaged {
         // Iterate over all guard modules
         uint256 length = datastoreAddress.length(address(this), GUARD_MODULES);
         for (uint256 i; i < length; i++) {
-            address guardModule = datastoreAddress.at(
-                address(this),
-                GUARD_MODULES,
-                i
-            );
+            address guardModule = datastoreAddress.at(address(this), GUARD_MODULES, i);
             IGuardERC20(guardModule).check(sender, recipient, amount);
         }
     }
@@ -43,13 +35,8 @@ contract GuardERC20 is IGuardERC20, DatastoreSetAddress, AccessManaged {
     }
 
     // Execute an arbitrary function on an external contract
-    function execute(
-        address target,
-        bytes calldata data
-    ) external payable restricted returns (bytes memory) {
-        (bool success, bytes memory result) = target.call{value: msg.value}(
-            data
-        );
+    function execute(address target, bytes calldata data) external payable restricted returns (bytes memory) {
+        (bool success, bytes memory result) = target.call{value: msg.value}(data);
         if (!success) {
             revert("GuardERC20: call failed");
         }

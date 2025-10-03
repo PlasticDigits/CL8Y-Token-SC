@@ -17,17 +17,13 @@ contract BlacklistSenderOnly is IBlacklist, IGuardERC20, AccessManaged {
         if (isBlacklisted[sender]) revert Blacklisted(sender);
     }
 
-    function setIsBlacklistedToTrue(
-        address[] calldata _accounts
-    ) external restricted {
+    function setIsBlacklistedToTrue(address[] calldata _accounts) external restricted {
         for (uint256 i = 0; i < _accounts.length; i++) {
             isBlacklisted[_accounts[i]] = true;
         }
     }
 
-    function setIsBlacklistedToFalse(
-        address[] calldata _accounts
-    ) external restricted {
+    function setIsBlacklistedToFalse(address[] calldata _accounts) external restricted {
         for (uint256 i = 0; i < _accounts.length; i++) {
             isBlacklisted[_accounts[i]] = false;
         }

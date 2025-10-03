@@ -8,6 +8,7 @@ AccessManager BSC: `0x5823a01A5372B779cB091e47DBBb176F2831b4c7`
 DatastoreSetAddress BSC: `0x8a18c91387149806BE5F7c1ebc6fE99e12d183dA`
 GuardERC20 BSC: `0x417580DF7eE35FFA6286255b55B456c992657fB9`
 BlacklistSenderOnly BSC: `0x3009E9de998E62D75f8342109270c9F919F3a885`
+RateLimiting BSC: `0xeD380ED75890ee6458Ba2b0070c68b61c8Ceb41B`
 CL8Y Address BSC: `0x8F452a1fdd388A45e1080992eFF051b4dd9048d2`
 
 ### AccessManager Roles
@@ -90,4 +91,4 @@ forge build --via-ir
 ## deployment
 
 Key variables are set in the script, and should be updated correctly for the network.
-forge script script/DeployCL8Y_v2.s.sol:DeployCL8Y_v2 --broadcast --verify -vvv --rpc-url $RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY -i 1 --sender $DEPLOYER_ADDRESS
+forge script script/DeployCL8Y_v2.s.sol:DeployCL8Y_v2 --broadcast --verify --verifier etherscan -vvv --rpc-url $RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY -i 1 --sender $DEPLOYER_ADDRESS

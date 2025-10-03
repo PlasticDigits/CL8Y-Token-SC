@@ -8,6 +8,7 @@ import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20P
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IAmmFactory.sol";
+
 /*
 
 ╔═════════════════════════════════════════════════════════════════╗
@@ -63,21 +64,14 @@ contract CL8Y is ERC20, ERC20Burnable, ERC20Permit, Ownable {
     /// @param _factory The AMM factory contract interface
     /// @param _baseLiquidityToken The token to create the initial liquidity pair with
     /// @param _tradingOpenTime The timestamp when trading becomes enabled
-    constructor(
-        IAmmFactory _factory,
-        IERC20 _baseLiquidityToken,
-        uint256 _tradingOpenTime
-    )
+    constructor(IAmmFactory _factory, IERC20 _baseLiquidityToken, uint256 _tradingOpenTime)
         ERC20("CeramicLiberty.com", "CL8Y")
         ERC20Permit("CeramicLiberty.com")
         Ownable(msg.sender)
     {
         tradingOpenTime = _tradingOpenTime;
 
-        basePairV2 = _factory.createPair(
-            address(this),
-            address(_baseLiquidityToken)
-        );
+        basePairV2 = _factory.createPair(address(this), address(_baseLiquidityToken));
 
         _mint(owner(), 3_000_000 ether);
     }
@@ -87,16 +81,11 @@ contract CL8Y is ERC20, ERC20Burnable, ERC20Permit, Ownable {
     /// @param from The sender's address
     /// @param to The recipient's address
     /// @param value The amount of tokens to transfer
-    function _update(
-        address from,
-        address to,
-        uint256 value
-    ) internal override {
+    function _update(address from, address to, uint256 value) internal override {
         bool isOwner = from == owner() || to == owner();
         if (
-            to != basePairV2 || //not a sell
-            value == 0 ||
-            isOwner
+            to != basePairV2 //not a sell
+                || value == 0 || isOwner
         ) {
             // If trading is not open, and the sender is not the owner, revert.
             if (!tradingOpen() && (!isOwner)) {
@@ -104,9 +93,9 @@ contract CL8Y is ERC20, ERC20Burnable, ERC20Permit, Ownable {
             }
             // If trading open for 5 seconds or less, charge the anti-snipe burn on buys
             if (
-                from == basePairV2 && // is a buy
-                tradingOpen() && // trading is open
-                block.timestamp - tradingOpenTime <= ANTI_SNIPE_DURATION // trading open for 5 seconds or less
+                from == basePairV2 // is a buy
+                    && tradingOpen() // trading is open
+                    && block.timestamp - tradingOpenTime <= ANTI_SNIPE_DURATION // trading open for 5 seconds or less
             ) {
                 uint256 tax = (value * ANTI_SNIPE_BURN) / 10_000;
                 super._update(from, to, value);
@@ -212,14 +201,8 @@ contract CL8Y is ERC20, ERC20Burnable, ERC20Permit, Ownable {
     /// @notice Internal function to check if a wallet exceeds maximum holding limit
     /// @dev Reverts if the wallet is not exempt and balance exceeds maxBalance
     /// @param wallet The address to check the balance for
-    function _revertIfStandardWalletAndOverMaxHolding(
-        address wallet
-    ) internal view {
-        if (
-            wallet != basePairV2 &&
-            wallet != owner() &&
-            balanceOf(wallet) > maxBalance
-        ) {
+    function _revertIfStandardWalletAndOverMaxHolding(address wallet) internal view {
+        if (wallet != basePairV2 && wallet != owner() && balanceOf(wallet) > maxBalance) {
             revert OverMax(balanceOf(wallet), maxBalance);
         }
     }

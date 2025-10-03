@@ -26,11 +26,7 @@ contract BlacklistSenderOnlyTest is Test {
         selectors[1] = blacklist.setIsBlacklistedToFalse.selector;
         selectors[2] = blacklist.revertIfBlacklisted.selector;
 
-        accessManager.setTargetFunctionRole(
-            address(blacklist),
-            selectors,
-            accessManager.ADMIN_ROLE()
-        );
+        accessManager.setTargetFunctionRole(address(blacklist), selectors, accessManager.ADMIN_ROLE());
 
         vm.stopPrank();
     }
@@ -80,12 +76,7 @@ contract BlacklistSenderOnlyTest is Test {
         vm.prank(owner);
         blacklist.setIsBlacklistedToTrue(accounts);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                BlacklistSenderOnly.Blacklisted.selector,
-                user1
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(BlacklistSenderOnly.Blacklisted.selector, user1));
         blacklist.check(user1, user2, 1 ether);
     }
 
@@ -107,12 +98,7 @@ contract BlacklistSenderOnlyTest is Test {
         blacklist.setIsBlacklistedToTrue(accounts);
 
         vm.prank(owner);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                BlacklistSenderOnly.Blacklisted.selector,
-                user1
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(BlacklistSenderOnly.Blacklisted.selector, user1));
         blacklist.revertIfBlacklisted(user1);
 
         vm.prank(owner);

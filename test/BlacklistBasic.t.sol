@@ -33,11 +33,7 @@ contract BlacklistBasicTest is Test {
         selectors[1] = Blacklist.setIsBlacklistedToFalse.selector;
         selectors[2] = Blacklist.revertIfBlacklisted.selector;
 
-        accessManager.setTargetFunctionRole(
-            address(blacklist),
-            selectors,
-            accessManager.ADMIN_ROLE()
-        );
+        accessManager.setTargetFunctionRole(address(blacklist), selectors, accessManager.ADMIN_ROLE());
 
         vm.stopPrank();
     }
@@ -103,9 +99,7 @@ contract BlacklistBasicTest is Test {
         blacklist.setIsBlacklistedToTrue(accounts);
 
         // Should revert when sender is blacklisted
-        vm.expectRevert(
-            abi.encodeWithSelector(Blacklist.Blacklisted.selector, user1)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Blacklist.Blacklisted.selector, user1));
         blacklist.check(user1, user2, 1000);
 
         console.log("Check correctly reverted for blacklisted sender");
@@ -120,9 +114,7 @@ contract BlacklistBasicTest is Test {
         blacklist.setIsBlacklistedToTrue(accounts);
 
         // Should revert when recipient is blacklisted
-        vm.expectRevert(
-            abi.encodeWithSelector(Blacklist.Blacklisted.selector, user2)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Blacklist.Blacklisted.selector, user2));
         blacklist.check(user1, user2, 1000);
 
         console.log("Check correctly reverted for blacklisted recipient");
@@ -138,9 +130,7 @@ contract BlacklistBasicTest is Test {
         blacklist.setIsBlacklistedToTrue(accounts);
 
         // Should revert when recipient is checked first (order in check function)
-        vm.expectRevert(
-            abi.encodeWithSelector(Blacklist.Blacklisted.selector, user2)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Blacklist.Blacklisted.selector, user2));
         blacklist.check(user1, user2, 1000);
 
         console.log("Check correctly reverted when both users are blacklisted");
@@ -156,9 +146,7 @@ contract BlacklistBasicTest is Test {
 
         // Should revert when checking blacklisted account
         vm.prank(owner);
-        vm.expectRevert(
-            abi.encodeWithSelector(Blacklist.Blacklisted.selector, user1)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Blacklist.Blacklisted.selector, user1));
         blacklist.revertIfBlacklisted(user1);
 
         // Should not revert when checking non-blacklisted account

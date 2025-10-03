@@ -40,10 +40,7 @@ contract CL8YIntegrationTest is Test {
         blacklist = new Blacklist(address(accessManager));
 
         // 4. Deploy GuardERC20 with AccessManager and DatastoreSetAddress
-        guardERC20 = new GuardERC20(
-            address(accessManager),
-            datastoreSetAddress
-        );
+        guardERC20 = new GuardERC20(address(accessManager), datastoreSetAddress);
 
         // 5. Configure access controls for Blacklist
         bytes4[] memory blacklistSelectors = new bytes4[](3);
@@ -51,11 +48,7 @@ contract CL8YIntegrationTest is Test {
         blacklistSelectors[1] = Blacklist.setIsBlacklistedToFalse.selector;
         blacklistSelectors[2] = Blacklist.revertIfBlacklisted.selector;
 
-        accessManager.setTargetFunctionRole(
-            address(blacklist),
-            blacklistSelectors,
-            accessManager.ADMIN_ROLE()
-        );
+        accessManager.setTargetFunctionRole(address(blacklist), blacklistSelectors, accessManager.ADMIN_ROLE());
 
         // 6. Configure access controls for GuardERC20
         bytes4[] memory guardSelectors = new bytes4[](3);
@@ -63,11 +56,7 @@ contract CL8YIntegrationTest is Test {
         guardSelectors[1] = GuardERC20.removeGuardModule.selector;
         guardSelectors[2] = GuardERC20.execute.selector;
 
-        accessManager.setTargetFunctionRole(
-            address(guardERC20),
-            guardSelectors,
-            accessManager.ADMIN_ROLE()
-        );
+        accessManager.setTargetFunctionRole(address(guardERC20), guardSelectors, accessManager.ADMIN_ROLE());
 
         // 7. Grant admin role to owner
         accessManager.grantRole(accessManager.ADMIN_ROLE(), owner, 0);
@@ -89,17 +78,10 @@ contract CL8YIntegrationTest is Test {
         assertEq(token.balanceOf(owner), 3_000_000 ether);
 
         // Test that blacklist is properly added as guard module
-        uint256 guardModulesLength = datastoreSetAddress.length(
-            address(guardERC20),
-            guardERC20.GUARD_MODULES()
-        );
+        uint256 guardModulesLength = datastoreSetAddress.length(address(guardERC20), guardERC20.GUARD_MODULES());
         assertEq(guardModulesLength, 1);
 
-        address firstGuardModule = datastoreSetAddress.at(
-            address(guardERC20),
-            guardERC20.GUARD_MODULES(),
-            0
-        );
+        address firstGuardModule = datastoreSetAddress.at(address(guardERC20), guardERC20.GUARD_MODULES(), 0);
         assertEq(firstGuardModule, address(blacklist));
 
         // Test that no addresses are initially blacklisted
@@ -150,9 +132,7 @@ contract CL8YIntegrationTest is Test {
 
         // Attempt transfer from blacklisted alice should fail
         vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(Blacklist.Blacklisted.selector, alice)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Blacklist.Blacklisted.selector, alice));
         token.transfer(bob, 50 ether);
 
         console.log("Blacklisted sender correctly blocked");
@@ -173,9 +153,7 @@ contract CL8YIntegrationTest is Test {
 
         // Attempt transfer to blacklisted bob should fail
         vm.prank(owner);
-        vm.expectRevert(
-            abi.encodeWithSelector(Blacklist.Blacklisted.selector, bob)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Blacklist.Blacklisted.selector, bob));
         token.transfer(bob, transferAmount);
 
         console.log("Blacklisted recipient correctly blocked");
@@ -242,9 +220,7 @@ contract CL8YIntegrationTest is Test {
 
         // Alice (blacklisted) tries to burn tokens - should fail because burn calls _update
         vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(Blacklist.Blacklisted.selector, alice)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Blacklist.Blacklisted.selector, alice));
         token.burn(burnAmount);
 
         console.log("Blacklisted user correctly blocked from burning");
@@ -262,11 +238,7 @@ contract CL8YIntegrationTest is Test {
         selectors[1] = Blacklist.setIsBlacklistedToFalse.selector;
         selectors[2] = Blacklist.revertIfBlacklisted.selector;
 
-        accessManager.setTargetFunctionRole(
-            address(secondBlacklist),
-            selectors,
-            accessManager.ADMIN_ROLE()
-        );
+        accessManager.setTargetFunctionRole(address(secondBlacklist), selectors, accessManager.ADMIN_ROLE());
 
         // Add second blacklist as guard module
         guardERC20.addGuardModule(address(secondBlacklist));
@@ -274,10 +246,7 @@ contract CL8YIntegrationTest is Test {
         vm.stopPrank();
 
         // Verify we now have 2 guard modules
-        uint256 guardModulesLength = datastoreSetAddress.length(
-            address(guardERC20),
-            guardERC20.GUARD_MODULES()
-        );
+        uint256 guardModulesLength = datastoreSetAddress.length(address(guardERC20), guardERC20.GUARD_MODULES());
         assertEq(guardModulesLength, 2);
 
         // Blacklist alice in first blacklist only
@@ -289,9 +258,7 @@ contract CL8YIntegrationTest is Test {
 
         // Transfer should still fail even though alice is only blacklisted in first guard
         vm.prank(owner);
-        vm.expectRevert(
-            abi.encodeWithSelector(Blacklist.Blacklisted.selector, alice)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Blacklist.Blacklisted.selector, alice));
         token.transfer(alice, 100 ether);
 
         console.log("Multiple guard modules working correctly");
@@ -360,16 +327,12 @@ contract CL8YIntegrationTest is Test {
 
         // 6. Alice can't send tokens anymore
         vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(Blacklist.Blacklisted.selector, alice)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Blacklist.Blacklisted.selector, alice));
         token.transfer(bob, 100 ether);
 
         // 7. Alice can't receive tokens anymore
         vm.prank(bob);
-        vm.expectRevert(
-            abi.encodeWithSelector(Blacklist.Blacklisted.selector, alice)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Blacklist.Blacklisted.selector, alice));
         token.transfer(alice, 100 ether);
 
         // 8. Bob and Charlie can still trade normally

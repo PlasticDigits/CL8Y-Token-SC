@@ -7,10 +7,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract CL8Y_v2 is ERC20 {
     IGuardERC20 private immutable guard;
 
-    constructor(
-        IGuardERC20 _guard,
-        address _initialHolder
-    ) ERC20("CeramicLiberty.com", "CL8Y") {
+    constructor(IGuardERC20 _guard, address _initialHolder) ERC20("CeramicLiberty.com", "CL8Y") {
         guard = _guard;
         _mint(_initialHolder, 3_000_000 ether);
     }
@@ -19,11 +16,7 @@ contract CL8Y_v2 is ERC20 {
         _burn(_msgSender(), value);
     }
 
-    function _update(
-        address from,
-        address to,
-        uint256 value
-    ) internal override {
+    function _update(address from, address to, uint256 value) internal override {
         if (msg.sender == address(guard)) {
             _approve(from, address(guard), value);
         }

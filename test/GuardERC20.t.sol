@@ -109,18 +109,12 @@ contract GuardERC20Test is Test {
         datastoreSetAddress = new DatastoreSetAddress();
 
         // Deploy GuardERC20
-        guardERC20 = new GuardERC20(
-            address(accessManager),
-            datastoreSetAddress
-        );
+        guardERC20 = new GuardERC20(address(accessManager), datastoreSetAddress);
 
         // Deploy mock guards
         mockGuardPass = new MockGuardAlwaysPass();
         mockGuardRevert = new MockGuardAlwaysRevert();
-        mockGuardConditional = new MockGuardConditional(
-            blockedSender,
-            blockedRecipient
-        );
+        mockGuardConditional = new MockGuardConditional(blockedSender, blockedRecipient);
         mockExecuteTarget = new MockExecuteTarget();
 
         // Configure function roles for restricted functions
@@ -129,11 +123,7 @@ contract GuardERC20Test is Test {
         selectors[1] = GuardERC20.removeGuardModule.selector;
         selectors[2] = GuardERC20.execute.selector;
 
-        accessManager.setTargetFunctionRole(
-            address(guardERC20),
-            selectors,
-            accessManager.ADMIN_ROLE()
-        );
+        accessManager.setTargetFunctionRole(address(guardERC20), selectors, accessManager.ADMIN_ROLE());
 
         // Grant admin role to owner
         accessManager.grantRole(accessManager.ADMIN_ROLE(), owner, 0);
@@ -143,34 +133,21 @@ contract GuardERC20Test is Test {
 
     function testInitialState() public view {
         // Test that initially no guard modules are configured
-        uint256 length = datastoreSetAddress.length(
-            address(guardERC20),
-            guardERC20.GUARD_MODULES()
-        );
+        uint256 length = datastoreSetAddress.length(address(guardERC20), guardERC20.GUARD_MODULES());
         assertEq(length, 0);
 
         // Test that datastore address is set correctly
-        assertEq(
-            address(guardERC20.datastoreAddress()),
-            address(datastoreSetAddress)
-        );
+        assertEq(address(guardERC20.datastoreAddress()), address(datastoreSetAddress));
     }
 
     function testAddGuardModule() public {
         vm.prank(owner);
         guardERC20.addGuardModule(address(mockGuardPass));
 
-        uint256 length = datastoreSetAddress.length(
-            address(guardERC20),
-            guardERC20.GUARD_MODULES()
-        );
+        uint256 length = datastoreSetAddress.length(address(guardERC20), guardERC20.GUARD_MODULES());
         assertEq(length, 1);
 
-        address guardModule = datastoreSetAddress.at(
-            address(guardERC20),
-            guardERC20.GUARD_MODULES(),
-            0
-        );
+        address guardModule = datastoreSetAddress.at(address(guardERC20), guardERC20.GUARD_MODULES(), 0);
         assertEq(guardModule, address(mockGuardPass));
 
         console.log("Successfully added guard module:", address(mockGuardPass));
@@ -184,16 +161,10 @@ contract GuardERC20Test is Test {
 
         vm.stopPrank();
 
-        uint256 length = datastoreSetAddress.length(
-            address(guardERC20),
-            guardERC20.GUARD_MODULES()
-        );
+        uint256 length = datastoreSetAddress.length(address(guardERC20), guardERC20.GUARD_MODULES());
         assertEq(length, 2);
 
-        address[] memory allModules = datastoreSetAddress.getAll(
-            address(guardERC20),
-            guardERC20.GUARD_MODULES()
-        );
+        address[] memory allModules = datastoreSetAddress.getAll(address(guardERC20), guardERC20.GUARD_MODULES());
         assertEq(allModules[0], address(mockGuardPass));
         assertEq(allModules[1], address(mockGuardConditional));
 
@@ -206,10 +177,7 @@ contract GuardERC20Test is Test {
         guardERC20.addGuardModule(address(mockGuardPass));
         guardERC20.addGuardModule(address(mockGuardConditional));
 
-        uint256 lengthBefore = datastoreSetAddress.length(
-            address(guardERC20),
-            guardERC20.GUARD_MODULES()
-        );
+        uint256 lengthBefore = datastoreSetAddress.length(address(guardERC20), guardERC20.GUARD_MODULES());
         assertEq(lengthBefore, 2);
 
         // Remove one guard module
@@ -217,17 +185,10 @@ contract GuardERC20Test is Test {
 
         vm.stopPrank();
 
-        uint256 lengthAfter = datastoreSetAddress.length(
-            address(guardERC20),
-            guardERC20.GUARD_MODULES()
-        );
+        uint256 lengthAfter = datastoreSetAddress.length(address(guardERC20), guardERC20.GUARD_MODULES());
         assertEq(lengthAfter, 1);
 
-        address remaining = datastoreSetAddress.at(
-            address(guardERC20),
-            guardERC20.GUARD_MODULES(),
-            0
-        );
+        address remaining = datastoreSetAddress.at(address(guardERC20), guardERC20.GUARD_MODULES(), 0);
         assertEq(remaining, address(mockGuardConditional));
 
         console.log("Successfully removed guard module");
@@ -288,12 +249,7 @@ contract GuardERC20Test is Test {
         guardERC20.addGuardModule(address(mockGuardRevert));
 
         // Should revert when guard module reverts
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                MockGuardAlwaysRevert.GuardFailed.selector,
-                "Mock guard always reverts"
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(MockGuardAlwaysRevert.GuardFailed.selector, "Mock guard always reverts"));
         guardERC20.check(user1, user2, 1000);
 
         console.log("Check correctly reverted when guard module failed");
@@ -308,21 +264,11 @@ contract GuardERC20Test is Test {
         guardERC20.check(user1, user2, 1000);
 
         // Should revert for blocked sender
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                MockGuardConditional.BlockedSender.selector,
-                blockedSender
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(MockGuardConditional.BlockedSender.selector, blockedSender));
         guardERC20.check(blockedSender, user2, 1000);
 
         // Should revert for blocked recipient
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                MockGuardConditional.BlockedRecipient.selector,
-                blockedRecipient
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(MockGuardConditional.BlockedRecipient.selector, blockedRecipient));
         guardERC20.check(user1, blockedRecipient, 1000);
 
         console.log("Conditional guard module working correctly");
@@ -366,10 +312,7 @@ contract GuardERC20Test is Test {
     }
 
     function testAccessControlOnExecute() public {
-        bytes memory data = abi.encodeWithSelector(
-            MockExecuteTarget.setValue.selector,
-            12345
-        );
+        bytes memory data = abi.encodeWithSelector(MockExecuteTarget.setValue.selector, 12345);
 
         // Should revert when called by unauthorized user
         vm.prank(unauthorizedUser);
@@ -382,10 +325,7 @@ contract GuardERC20Test is Test {
     function testExecuteFunction() public {
         // Test execute by calling setValue on the mock target contract
         uint256 testValue = 12345;
-        bytes memory data = abi.encodeWithSelector(
-            MockExecuteTarget.setValue.selector,
-            testValue
-        );
+        bytes memory data = abi.encodeWithSelector(MockExecuteTarget.setValue.selector, testValue);
 
         vm.prank(owner);
         guardERC20.execute(address(mockExecuteTarget), data);
@@ -400,9 +340,7 @@ contract GuardERC20Test is Test {
 
     function testExecuteWithFailingCall() public {
         // Call a function that always reverts
-        bytes memory data = abi.encodeWithSelector(
-            MockExecuteTarget.failingFunction.selector
-        );
+        bytes memory data = abi.encodeWithSelector(MockExecuteTarget.failingFunction.selector);
 
         vm.prank(owner);
         // Should revert with "GuardERC20: call failed"
@@ -417,10 +355,7 @@ contract GuardERC20Test is Test {
         uint256 testValue = 12345;
         uint256 etherAmount = 1 ether;
 
-        bytes memory data = abi.encodeWithSelector(
-            MockExecuteTarget.setValue.selector,
-            testValue
-        );
+        bytes memory data = abi.encodeWithSelector(MockExecuteTarget.setValue.selector, testValue);
 
         // Give the owner some ether to send
         vm.deal(owner, etherAmount);
@@ -430,16 +365,10 @@ contract GuardERC20Test is Test {
 
         vm.prank(owner);
         // Call execute with ether - the ether comes from the caller and gets forwarded
-        guardERC20.execute{value: etherAmount}(
-            address(mockExecuteTarget),
-            data
-        );
+        guardERC20.execute{value: etherAmount}(address(mockExecuteTarget), data);
 
         // Verify the external contract received the ether and was called correctly
-        assertEq(
-            address(mockExecuteTarget).balance,
-            initialBalance + etherAmount
-        );
+        assertEq(address(mockExecuteTarget).balance, initialBalance + etherAmount);
         assertEq(mockExecuteTarget.value(), testValue);
         assertEq(mockExecuteTarget.caller(), address(guardERC20));
         assertTrue(mockExecuteTarget.wasCalled());
@@ -457,10 +386,7 @@ contract GuardERC20Test is Test {
 
         vm.stopPrank();
 
-        uint256 length = datastoreSetAddress.length(
-            address(guardERC20),
-            guardERC20.GUARD_MODULES()
-        );
+        uint256 length = datastoreSetAddress.length(address(guardERC20), guardERC20.GUARD_MODULES());
         assertEq(length, 1);
 
         console.log("Duplicate guard module handling works correctly");
@@ -471,10 +397,7 @@ contract GuardERC20Test is Test {
         vm.prank(owner);
         guardERC20.removeGuardModule(address(mockGuardPass));
 
-        uint256 length = datastoreSetAddress.length(
-            address(guardERC20),
-            guardERC20.GUARD_MODULES()
-        );
+        uint256 length = datastoreSetAddress.length(address(guardERC20), guardERC20.GUARD_MODULES());
         assertEq(length, 0);
 
         console.log("Non-existent guard module removal handled correctly");
