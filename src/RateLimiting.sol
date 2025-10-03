@@ -52,12 +52,9 @@ contract RateLimiting is AccessManaged, IGuardERC20 {
     error OptInNotRequested(address account);
     error OptInNotReady(address account);
 
-    constructor(
-        address initialAuthority,
-        IERC20 token,
-        uint256 rateLimitInterval,
-        uint256 rateLimit
-    ) AccessManaged(initialAuthority) {
+    constructor(address initialAuthority, IERC20 token, uint256 rateLimitInterval, uint256 rateLimit)
+        AccessManaged(initialAuthority)
+    {
         cl8y = token;
         defaultConfig = DefaultConfig(rateLimitInterval, rateLimit);
     }
@@ -96,10 +93,7 @@ contract RateLimiting is AccessManaged, IGuardERC20 {
     }
 
     /// @notice Activate the opt-in request with custom limits.
-    function optInActivate(
-        uint256 rateLimitInterval,
-        uint256 rateLimit
-    ) external {
+    function optInActivate(uint256 rateLimitInterval, uint256 rateLimit) external {
         _revertIfOverride(msg.sender);
 
         uint256 timestamp = optInRequestTimestamp[msg.sender];
@@ -114,11 +108,7 @@ contract RateLimiting is AccessManaged, IGuardERC20 {
             revert OptInNotReady(msg.sender);
         }
 
-        accountConfig[msg.sender] = AccountConfig(
-            rateLimitInterval,
-            rateLimit,
-            AccountStatus.OPT_IN
-        );
+        accountConfig[msg.sender] = AccountConfig(rateLimitInterval, rateLimit, AccountStatus.OPT_IN);
         optInRequestTimestamp[msg.sender] = 0;
     }
 
@@ -129,20 +119,14 @@ contract RateLimiting is AccessManaged, IGuardERC20 {
         AccountConfig memory config = accountConfig[sender];
         AccountStatus status = config.status;
 
-        if (
-            status == AccountStatus.OPT_OUT ||
-            status == AccountStatus.OPT_OUT_OVERRIDE
-        ) {
+        if (status == AccountStatus.OPT_OUT || status == AccountStatus.OPT_OUT_OVERRIDE) {
             return;
         }
 
         uint256 rateLimitInterval = defaultConfig.rateLimitInterval;
         uint256 rateLimit = defaultConfig.rateLimit;
 
-        if (
-            status == AccountStatus.OPT_IN ||
-            status == AccountStatus.OPT_IN_OVERRIDE
-        ) {
+        if (status == AccountStatus.OPT_IN || status == AccountStatus.OPT_IN_OVERRIDE) {
             rateLimitInterval = config.rateLimitInterval;
             rateLimit = config.rateLimit;
         }
@@ -175,31 +159,18 @@ contract RateLimiting is AccessManaged, IGuardERC20 {
     }
 
     // administrative functions
-    function setDefaultConfig(
-        uint256 rateLimitInterval,
-        uint256 rateLimit
-    ) external restricted {
+    function setDefaultConfig(uint256 rateLimitInterval, uint256 rateLimit) external restricted {
         defaultConfig = DefaultConfig(rateLimitInterval, rateLimit);
     }
 
-    function setAccountConfig(
-        address account,
-        uint256 rateLimitInterval,
-        uint256 rateLimit,
-        AccountStatus status
-    ) external restricted {
-        accountConfig[account] = AccountConfig(
-            rateLimitInterval,
-            rateLimit,
-            status
-        );
+    function setAccountConfig(address account, uint256 rateLimitInterval, uint256 rateLimit, AccountStatus status)
+        external
+        restricted
+    {
+        accountConfig[account] = AccountConfig(rateLimitInterval, rateLimit, status);
     }
 
-    function setCurrentUsage(
-        address account,
-        uint256 amount,
-        uint256 windowId
-    ) external restricted {
+    function setCurrentUsage(address account, uint256 amount, uint256 windowId) external restricted {
         currentUsage[account] = CurrentUsage(amount, windowId);
     }
 
@@ -211,27 +182,19 @@ contract RateLimiting is AccessManaged, IGuardERC20 {
     /// @notice Get the amount available to transfer in the current window for an account
     /// @param account The account to check
     /// @return The amount available to transfer (type(uint256).max if opted out)
-    function availableToTransfer(
-        address account
-    ) external view returns (uint256) {
+    function availableToTransfer(address account) external view returns (uint256) {
         AccountConfig memory config = accountConfig[account];
         AccountStatus status = config.status;
 
         // If opted out, no limit
-        if (
-            status == AccountStatus.OPT_OUT ||
-            status == AccountStatus.OPT_OUT_OVERRIDE
-        ) {
+        if (status == AccountStatus.OPT_OUT || status == AccountStatus.OPT_OUT_OVERRIDE) {
             return type(uint256).max;
         }
 
         uint256 rateLimitInterval = defaultConfig.rateLimitInterval;
         uint256 rateLimit = defaultConfig.rateLimit;
 
-        if (
-            status == AccountStatus.OPT_IN ||
-            status == AccountStatus.OPT_IN_OVERRIDE
-        ) {
+        if (status == AccountStatus.OPT_IN || status == AccountStatus.OPT_IN_OVERRIDE) {
             rateLimitInterval = config.rateLimitInterval;
             rateLimit = config.rateLimit;
         }
@@ -262,10 +225,7 @@ contract RateLimiting is AccessManaged, IGuardERC20 {
 
         uint256 rateLimitInterval = defaultConfig.rateLimitInterval;
 
-        if (
-            status == AccountStatus.OPT_IN ||
-            status == AccountStatus.OPT_IN_OVERRIDE
-        ) {
+        if (status == AccountStatus.OPT_IN || status == AccountStatus.OPT_IN_OVERRIDE) {
             rateLimitInterval = config.rateLimitInterval;
         }
 
@@ -275,10 +235,7 @@ contract RateLimiting is AccessManaged, IGuardERC20 {
         uint256 currentWindowId = block.timestamp / rateLimitInterval;
 
         // If different window or no usage yet, return current timestamp
-        if (
-            usage.windowId != currentWindowId ||
-            usage.transferCumulativeTotal == 0
-        ) {
+        if (usage.windowId != currentWindowId || usage.transferCumulativeTotal == 0) {
             return block.timestamp;
         }
 
@@ -289,10 +246,7 @@ contract RateLimiting is AccessManaged, IGuardERC20 {
     // Internal helpers
     function _revertIfOverride(address account) internal view {
         AccountStatus status = accountConfig[account].status;
-        if (
-            status == AccountStatus.OPT_IN_OVERRIDE ||
-            status == AccountStatus.OPT_OUT_OVERRIDE
-        ) {
+        if (status == AccountStatus.OPT_IN_OVERRIDE || status == AccountStatus.OPT_OUT_OVERRIDE) {
             revert OverrideActive(account);
         }
     }

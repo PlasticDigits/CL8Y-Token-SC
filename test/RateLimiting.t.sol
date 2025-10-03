@@ -34,11 +34,7 @@ contract MockERC20 is IERC20 {
         return true;
     }
 
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool) {
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         if (address(rateLimiting) != address(0)) {
             rateLimiting.check(from, to, amount);
         }
@@ -63,10 +59,7 @@ contract MockERC20 is IERC20 {
         return _balances[account];
     }
 
-    function allowance(
-        address owner,
-        address spender
-    ) external view returns (uint256) {
+    function allowance(address owner, address spender) external view returns (uint256) {
         return _allowances[owner][spender];
     }
 }
@@ -95,12 +88,7 @@ contract RateLimitingTest is Test {
         token = new MockERC20();
 
         // Deploy RateLimiting contract
-        rateLimiting = new RateLimiting(
-            address(accessManager),
-            IERC20(address(token)),
-            DEFAULT_INTERVAL,
-            DEFAULT_LIMIT
-        );
+        rateLimiting = new RateLimiting(address(accessManager), IERC20(address(token)), DEFAULT_INTERVAL, DEFAULT_LIMIT);
 
         // Set rate limiting in token
         token.setRateLimiting(address(rateLimiting));
@@ -112,11 +100,7 @@ contract RateLimitingTest is Test {
         selectors[2] = RateLimiting.setCurrentUsage.selector;
         selectors[3] = RateLimiting.setAccountToDefault.selector;
 
-        accessManager.setTargetFunctionRole(
-            address(rateLimiting),
-            selectors,
-            accessManager.ADMIN_ROLE()
-        );
+        accessManager.setTargetFunctionRole(address(rateLimiting), selectors, accessManager.ADMIN_ROLE());
 
         // Grant admin role to owner
         accessManager.grantRole(accessManager.ADMIN_ROLE(), owner, 0);
@@ -160,7 +144,7 @@ contract RateLimitingTest is Test {
         vm.stopPrank();
 
         // Check cumulative usage
-        (uint256 total, ) = rateLimiting.currentUsage(user1);
+        (uint256 total,) = rateLimiting.currentUsage(user1);
         assertEq(total, 700 ether);
 
         console.log("Cumulative transfers tracked correctly");
@@ -169,12 +153,7 @@ contract RateLimitingTest is Test {
     function testCheckRateLimitExceeded() public {
         // Try to transfer more than rate limit
         vm.prank(user1);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                RateLimiting.RateLimitExceeded.selector,
-                user1
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(RateLimiting.RateLimitExceeded.selector, user1));
         token.transfer(user2, DEFAULT_LIMIT + 1);
 
         console.log("Rate limit exceeded error working correctly");
@@ -187,12 +166,7 @@ contract RateLimitingTest is Test {
 
         // Next transfer should exceed limit
         vm.prank(user1);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                RateLimiting.RateLimitExceeded.selector,
-                user1
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(RateLimiting.RateLimitExceeded.selector, user1));
         token.transfer(user2, 101 ether);
 
         console.log("Cumulative rate limit exceeded working correctly");
@@ -203,7 +177,7 @@ contract RateLimitingTest is Test {
         vm.prank(user1);
         token.transfer(user2, 500 ether);
 
-        (uint256 totalBefore, ) = rateLimiting.currentUsage(user1);
+        (uint256 totalBefore,) = rateLimiting.currentUsage(user1);
         assertEq(totalBefore, 500 ether);
 
         // Move to next window
@@ -213,9 +187,7 @@ contract RateLimitingTest is Test {
         vm.prank(user1);
         token.transfer(user2, 600 ether);
 
-        (uint256 totalAfter, uint256 windowId) = rateLimiting.currentUsage(
-            user1
-        );
+        (uint256 totalAfter, uint256 windowId) = rateLimiting.currentUsage(user1);
         assertEq(totalAfter, 600 ether);
         assertEq(windowId, block.timestamp / DEFAULT_INTERVAL);
 
@@ -225,9 +197,7 @@ contract RateLimitingTest is Test {
     function testCheckInvalidSender() public {
         // Call check directly from non-token address should revert
         vm.prank(user1);
-        vm.expectRevert(
-            abi.encodeWithSelector(RateLimiting.InvalidSender.selector, user1)
-        );
+        vm.expectRevert(abi.encodeWithSelector(RateLimiting.InvalidSender.selector, user1));
         rateLimiting.check(user1, user2, 100 ether);
 
         console.log("InvalidSender error working correctly");
@@ -256,9 +226,7 @@ contract RateLimitingTest is Test {
         rateLimiting.optOutActivate();
 
         // Check status changed
-        (, , RateLimiting.AccountStatus status) = rateLimiting.accountConfig(
-            user1
-        );
+        (,, RateLimiting.AccountStatus status) = rateLimiting.accountConfig(user1);
         assertEq(uint8(status), uint8(RateLimiting.AccountStatus.OPT_OUT));
 
         // Check timestamp was cleared
@@ -270,12 +238,7 @@ contract RateLimitingTest is Test {
     function testOptOutActivateNotRequested() public {
         // Try to activate without requesting
         vm.prank(user1);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                RateLimiting.OptOutNotRequested.selector,
-                user1
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(RateLimiting.OptOutNotRequested.selector, user1));
         rateLimiting.optOutActivate();
 
         console.log("OptOutNotRequested error working correctly");
@@ -288,9 +251,7 @@ contract RateLimitingTest is Test {
 
         // Try to activate before interval passes
         vm.prank(user1);
-        vm.expectRevert(
-            abi.encodeWithSelector(RateLimiting.OptOutNotReady.selector, user1)
-        );
+        vm.expectRevert(abi.encodeWithSelector(RateLimiting.OptOutNotReady.selector, user1));
         rateLimiting.optOutActivate();
 
         console.log("OptOutNotReady error working correctly");
@@ -300,12 +261,7 @@ contract RateLimitingTest is Test {
         // First set user to OPT_IN with custom interval
         uint256 customInterval = 2 days;
         vm.prank(owner);
-        rateLimiting.setAccountConfig(
-            user1,
-            customInterval,
-            500 ether,
-            RateLimiting.AccountStatus.OPT_IN
-        );
+        rateLimiting.setAccountConfig(user1, customInterval, 500 ether, RateLimiting.AccountStatus.OPT_IN);
 
         // Request opt-out
         vm.prank(user1);
@@ -318,9 +274,7 @@ contract RateLimitingTest is Test {
         vm.prank(user1);
         rateLimiting.optOutActivate();
 
-        (, , RateLimiting.AccountStatus status) = rateLimiting.accountConfig(
-            user1
-        );
+        (,, RateLimiting.AccountStatus status) = rateLimiting.accountConfig(user1);
         assertEq(uint8(status), uint8(RateLimiting.AccountStatus.OPT_OUT));
 
         console.log("Opt-out from OPT_IN status working correctly");
@@ -351,11 +305,7 @@ contract RateLimitingTest is Test {
         rateLimiting.optInActivate(customInterval, customLimit);
 
         // Check config changed
-        (
-            uint256 interval,
-            uint256 limit,
-            RateLimiting.AccountStatus status
-        ) = rateLimiting.accountConfig(user1);
+        (uint256 interval, uint256 limit, RateLimiting.AccountStatus status) = rateLimiting.accountConfig(user1);
         assertEq(interval, customInterval);
         assertEq(limit, customLimit);
         assertEq(uint8(status), uint8(RateLimiting.AccountStatus.OPT_IN));
@@ -369,12 +319,7 @@ contract RateLimitingTest is Test {
     function testOptInActivateNotRequested() public {
         // Try to activate without requesting
         vm.prank(user1);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                RateLimiting.OptInNotRequested.selector,
-                user1
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(RateLimiting.OptInNotRequested.selector, user1));
         rateLimiting.optInActivate(12 hours, 500 ether);
 
         console.log("OptInNotRequested error working correctly");
@@ -387,9 +332,7 @@ contract RateLimitingTest is Test {
 
         // Try to activate before interval passes
         vm.prank(user1);
-        vm.expectRevert(
-            abi.encodeWithSelector(RateLimiting.OptInNotReady.selector, user1)
-        );
+        vm.expectRevert(abi.encodeWithSelector(RateLimiting.OptInNotReady.selector, user1));
         rateLimiting.optInActivate(12 hours, 500 ether);
 
         console.log("OptInNotReady error working correctly");
@@ -399,12 +342,7 @@ contract RateLimitingTest is Test {
         // First set user to OPT_IN with custom interval
         uint256 firstInterval = 2 days;
         vm.prank(owner);
-        rateLimiting.setAccountConfig(
-            user1,
-            firstInterval,
-            500 ether,
-            RateLimiting.AccountStatus.OPT_IN
-        );
+        rateLimiting.setAccountConfig(user1, firstInterval, 500 ether, RateLimiting.AccountStatus.OPT_IN);
 
         // Request opt-in again (to change limits)
         vm.prank(user1);
@@ -417,7 +355,7 @@ contract RateLimitingTest is Test {
         vm.prank(user1);
         rateLimiting.optInActivate(6 hours, 200 ether);
 
-        (uint256 interval, uint256 limit, ) = rateLimiting.accountConfig(user1);
+        (uint256 interval, uint256 limit,) = rateLimiting.accountConfig(user1);
         assertEq(interval, 6 hours);
         assertEq(limit, 200 ether);
 
@@ -427,19 +365,14 @@ contract RateLimitingTest is Test {
     function testCheckWithOptOutStatus() public {
         // Set user to OPT_OUT
         vm.prank(owner);
-        rateLimiting.setAccountConfig(
-            user1,
-            0,
-            0,
-            RateLimiting.AccountStatus.OPT_OUT
-        );
+        rateLimiting.setAccountConfig(user1, 0, 0, RateLimiting.AccountStatus.OPT_OUT);
 
         // Should be able to transfer any amount
         vm.prank(user1);
         token.transfer(user2, 5000 ether);
 
         // Usage should not be tracked
-        (uint256 total, ) = rateLimiting.currentUsage(user1);
+        (uint256 total,) = rateLimiting.currentUsage(user1);
         assertEq(total, 0);
 
         console.log("OPT_OUT status bypasses rate limiting");
@@ -448,19 +381,14 @@ contract RateLimitingTest is Test {
     function testCheckWithOptOutOverrideStatus() public {
         // Set user to OPT_OUT_OVERRIDE
         vm.prank(owner);
-        rateLimiting.setAccountConfig(
-            user1,
-            0,
-            0,
-            RateLimiting.AccountStatus.OPT_OUT_OVERRIDE
-        );
+        rateLimiting.setAccountConfig(user1, 0, 0, RateLimiting.AccountStatus.OPT_OUT_OVERRIDE);
 
         // Should be able to transfer any amount
         vm.prank(user1);
         token.transfer(user2, 5000 ether);
 
         // Usage should not be tracked
-        (uint256 total, ) = rateLimiting.currentUsage(user1);
+        (uint256 total,) = rateLimiting.currentUsage(user1);
         assertEq(total, 0);
 
         console.log("OPT_OUT_OVERRIDE status bypasses rate limiting");
@@ -471,12 +399,7 @@ contract RateLimitingTest is Test {
         uint256 customInterval = 12 hours;
         uint256 customLimit = 500 ether;
         vm.prank(owner);
-        rateLimiting.setAccountConfig(
-            user1,
-            customInterval,
-            customLimit,
-            RateLimiting.AccountStatus.OPT_IN
-        );
+        rateLimiting.setAccountConfig(user1, customInterval, customLimit, RateLimiting.AccountStatus.OPT_IN);
 
         // Should be able to transfer up to custom limit
         vm.prank(user1);
@@ -484,12 +407,7 @@ contract RateLimitingTest is Test {
 
         // Should revert if exceeding custom limit
         vm.prank(user1);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                RateLimiting.RateLimitExceeded.selector,
-                user1
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(RateLimiting.RateLimitExceeded.selector, user1));
         token.transfer(user2, 101 ether);
 
         console.log("OPT_IN status uses custom limits");
@@ -500,12 +418,7 @@ contract RateLimitingTest is Test {
         uint256 customInterval = 6 hours;
         uint256 customLimit = 300 ether;
         vm.prank(owner);
-        rateLimiting.setAccountConfig(
-            user1,
-            customInterval,
-            customLimit,
-            RateLimiting.AccountStatus.OPT_IN_OVERRIDE
-        );
+        rateLimiting.setAccountConfig(user1, customInterval, customLimit, RateLimiting.AccountStatus.OPT_IN_OVERRIDE);
 
         // Should be able to transfer up to custom limit
         vm.prank(user1);
@@ -513,12 +426,7 @@ contract RateLimitingTest is Test {
 
         // Should revert if exceeding custom limit
         vm.prank(user1);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                RateLimiting.RateLimitExceeded.selector,
-                user1
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(RateLimiting.RateLimitExceeded.selector, user1));
         token.transfer(user2, 51 ether);
 
         console.log("OPT_IN_OVERRIDE status uses custom limits");
@@ -527,18 +435,11 @@ contract RateLimitingTest is Test {
     function testOverrideActiveErrorOnOptOutRequest() public {
         // Set user to OPT_IN_OVERRIDE
         vm.prank(owner);
-        rateLimiting.setAccountConfig(
-            user1,
-            1 days,
-            1000 ether,
-            RateLimiting.AccountStatus.OPT_IN_OVERRIDE
-        );
+        rateLimiting.setAccountConfig(user1, 1 days, 1000 ether, RateLimiting.AccountStatus.OPT_IN_OVERRIDE);
 
         // Try to request opt-out
         vm.prank(user1);
-        vm.expectRevert(
-            abi.encodeWithSelector(RateLimiting.OverrideActive.selector, user1)
-        );
+        vm.expectRevert(abi.encodeWithSelector(RateLimiting.OverrideActive.selector, user1));
         rateLimiting.optOutRequest();
 
         console.log("OverrideActive error on optOutRequest working correctly");
@@ -547,18 +448,11 @@ contract RateLimitingTest is Test {
     function testOverrideActiveErrorOnOptOutActivate() public {
         // Set user to OPT_OUT_OVERRIDE
         vm.prank(owner);
-        rateLimiting.setAccountConfig(
-            user1,
-            0,
-            0,
-            RateLimiting.AccountStatus.OPT_OUT_OVERRIDE
-        );
+        rateLimiting.setAccountConfig(user1, 0, 0, RateLimiting.AccountStatus.OPT_OUT_OVERRIDE);
 
         // Try to activate opt-out
         vm.prank(user1);
-        vm.expectRevert(
-            abi.encodeWithSelector(RateLimiting.OverrideActive.selector, user1)
-        );
+        vm.expectRevert(abi.encodeWithSelector(RateLimiting.OverrideActive.selector, user1));
         rateLimiting.optOutActivate();
 
         console.log("OverrideActive error on optOutActivate working correctly");
@@ -567,18 +461,11 @@ contract RateLimitingTest is Test {
     function testOverrideActiveErrorOnOptInRequest() public {
         // Set user to OPT_OUT_OVERRIDE
         vm.prank(owner);
-        rateLimiting.setAccountConfig(
-            user1,
-            0,
-            0,
-            RateLimiting.AccountStatus.OPT_OUT_OVERRIDE
-        );
+        rateLimiting.setAccountConfig(user1, 0, 0, RateLimiting.AccountStatus.OPT_OUT_OVERRIDE);
 
         // Try to request opt-in
         vm.prank(user1);
-        vm.expectRevert(
-            abi.encodeWithSelector(RateLimiting.OverrideActive.selector, user1)
-        );
+        vm.expectRevert(abi.encodeWithSelector(RateLimiting.OverrideActive.selector, user1));
         rateLimiting.optInRequest();
 
         console.log("OverrideActive error on optInRequest working correctly");
@@ -587,18 +474,11 @@ contract RateLimitingTest is Test {
     function testOverrideActiveErrorOnOptInActivate() public {
         // Set user to OPT_IN_OVERRIDE
         vm.prank(owner);
-        rateLimiting.setAccountConfig(
-            user1,
-            1 days,
-            1000 ether,
-            RateLimiting.AccountStatus.OPT_IN_OVERRIDE
-        );
+        rateLimiting.setAccountConfig(user1, 1 days, 1000 ether, RateLimiting.AccountStatus.OPT_IN_OVERRIDE);
 
         // Try to activate opt-in
         vm.prank(user1);
-        vm.expectRevert(
-            abi.encodeWithSelector(RateLimiting.OverrideActive.selector, user1)
-        );
+        vm.expectRevert(abi.encodeWithSelector(RateLimiting.OverrideActive.selector, user1));
         rateLimiting.optInActivate(12 hours, 500 ether);
 
         console.log("OverrideActive error on optInActivate working correctly");
@@ -620,21 +500,14 @@ contract RateLimitingTest is Test {
     function testRateLimitIntervalZeroErrorWithOptIn() public {
         // Set user to OPT_IN with zero interval
         vm.prank(owner);
-        rateLimiting.setAccountConfig(
-            user1,
-            0,
-            500 ether,
-            RateLimiting.AccountStatus.OPT_IN
-        );
+        rateLimiting.setAccountConfig(user1, 0, 500 ether, RateLimiting.AccountStatus.OPT_IN);
 
         // Try to transfer
         vm.prank(user1);
         vm.expectRevert(RateLimiting.RateLimitIntervalZero.selector);
         token.transfer(user2, 100 ether);
 
-        console.log(
-            "RateLimitIntervalZero error with OPT_IN working correctly"
-        );
+        console.log("RateLimitIntervalZero error with OPT_IN working correctly");
     }
 
     function testSetDefaultConfig() public {
@@ -664,18 +537,9 @@ contract RateLimitingTest is Test {
         uint256 customLimit = 750 ether;
 
         vm.prank(owner);
-        rateLimiting.setAccountConfig(
-            user1,
-            customInterval,
-            customLimit,
-            RateLimiting.AccountStatus.OPT_IN
-        );
+        rateLimiting.setAccountConfig(user1, customInterval, customLimit, RateLimiting.AccountStatus.OPT_IN);
 
-        (
-            uint256 interval,
-            uint256 limit,
-            RateLimiting.AccountStatus status
-        ) = rateLimiting.accountConfig(user1);
+        (uint256 interval, uint256 limit, RateLimiting.AccountStatus status) = rateLimiting.accountConfig(user1);
         assertEq(interval, customInterval);
         assertEq(limit, customLimit);
         assertEq(uint8(status), uint8(RateLimiting.AccountStatus.OPT_IN));
@@ -686,12 +550,7 @@ contract RateLimitingTest is Test {
     function testSetAccountConfigAccessControl() public {
         vm.prank(unauthorizedUser);
         vm.expectRevert();
-        rateLimiting.setAccountConfig(
-            user1,
-            12 hours,
-            750 ether,
-            RateLimiting.AccountStatus.OPT_IN
-        );
+        rateLimiting.setAccountConfig(user1, 12 hours, 750 ether, RateLimiting.AccountStatus.OPT_IN);
 
         console.log("Access control on setAccountConfig working correctly");
     }
@@ -721,15 +580,10 @@ contract RateLimitingTest is Test {
     function testSetAccountToDefault() public {
         // First set custom config
         vm.prank(owner);
-        rateLimiting.setAccountConfig(
-            user1,
-            12 hours,
-            500 ether,
-            RateLimiting.AccountStatus.OPT_IN
-        );
+        rateLimiting.setAccountConfig(user1, 12 hours, 500 ether, RateLimiting.AccountStatus.OPT_IN);
 
         // Verify it was set
-        (uint256 intervalBefore, , ) = rateLimiting.accountConfig(user1);
+        (uint256 intervalBefore,,) = rateLimiting.accountConfig(user1);
         assertEq(intervalBefore, 12 hours);
 
         // Reset to default
@@ -737,11 +591,8 @@ contract RateLimitingTest is Test {
         rateLimiting.setAccountToDefault(user1);
 
         // Verify it was deleted
-        (
-            uint256 intervalAfter,
-            uint256 limitAfter,
-            RateLimiting.AccountStatus status
-        ) = rateLimiting.accountConfig(user1);
+        (uint256 intervalAfter, uint256 limitAfter, RateLimiting.AccountStatus status) =
+            rateLimiting.accountConfig(user1);
         assertEq(intervalAfter, 0);
         assertEq(limitAfter, 0);
         assertEq(uint8(status), uint8(RateLimiting.AccountStatus.DEFAULT));
@@ -767,8 +618,8 @@ contract RateLimitingTest is Test {
         token.transfer(user3, 700 ether);
 
         // Check independent tracking
-        (uint256 total1, ) = rateLimiting.currentUsage(user1);
-        (uint256 total2, ) = rateLimiting.currentUsage(user2);
+        (uint256 total1,) = rateLimiting.currentUsage(user1);
+        (uint256 total2,) = rateLimiting.currentUsage(user2);
 
         assertEq(total1, 600 ether);
         assertEq(total2, 700 ether);
@@ -781,17 +632,12 @@ contract RateLimitingTest is Test {
         vm.prank(user1);
         token.transfer(user2, DEFAULT_LIMIT);
 
-        (uint256 total, ) = rateLimiting.currentUsage(user1);
+        (uint256 total,) = rateLimiting.currentUsage(user1);
         assertEq(total, DEFAULT_LIMIT);
 
         // Next transfer should fail
         vm.prank(user1);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                RateLimiting.RateLimitExceeded.selector,
-                user1
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(RateLimiting.RateLimitExceeded.selector, user1));
         token.transfer(user2, 1);
 
         console.log("Exact limit edge case working correctly");
@@ -818,9 +664,7 @@ contract RateLimitingTest is Test {
         rateLimiting.optOutActivate();
 
         // Verify OPT_OUT status
-        (, , RateLimiting.AccountStatus status1) = rateLimiting.accountConfig(
-            user1
-        );
+        (,, RateLimiting.AccountStatus status1) = rateLimiting.accountConfig(user1);
         assertEq(uint8(status1), uint8(RateLimiting.AccountStatus.OPT_OUT));
 
         // Now request and activate opt-in
@@ -831,9 +675,7 @@ contract RateLimitingTest is Test {
         rateLimiting.optInActivate(6 hours, 300 ether);
 
         // Verify OPT_IN status
-        (, , RateLimiting.AccountStatus status2) = rateLimiting.accountConfig(
-            user1
-        );
+        (,, RateLimiting.AccountStatus status2) = rateLimiting.accountConfig(user1);
         assertEq(uint8(status2), uint8(RateLimiting.AccountStatus.OPT_IN));
 
         console.log("Opt-out then opt-in flow working correctly");
@@ -889,12 +731,7 @@ contract RateLimitingTest is Test {
     function testAvailableToTransferOptOut() public {
         // Set user to OPT_OUT
         vm.prank(owner);
-        rateLimiting.setAccountConfig(
-            user1,
-            0,
-            0,
-            RateLimiting.AccountStatus.OPT_OUT
-        );
+        rateLimiting.setAccountConfig(user1, 0, 0, RateLimiting.AccountStatus.OPT_OUT);
 
         // Should have unlimited available
         uint256 available = rateLimiting.availableToTransfer(user1);
@@ -906,40 +743,26 @@ contract RateLimitingTest is Test {
     function testAvailableToTransferOptOutOverride() public {
         // Set user to OPT_OUT_OVERRIDE
         vm.prank(owner);
-        rateLimiting.setAccountConfig(
-            user1,
-            0,
-            0,
-            RateLimiting.AccountStatus.OPT_OUT_OVERRIDE
-        );
+        rateLimiting.setAccountConfig(user1, 0, 0, RateLimiting.AccountStatus.OPT_OUT_OVERRIDE);
 
         // Should have unlimited available
         uint256 available = rateLimiting.availableToTransfer(user1);
         assertEq(available, type(uint256).max);
 
-        console.log(
-            "availableToTransfer for OPT_OUT_OVERRIDE working correctly"
-        );
+        console.log("availableToTransfer for OPT_OUT_OVERRIDE working correctly");
     }
 
     function testAvailableToTransferOptInCustomLimit() public {
         // Set user to OPT_IN with custom limit
         uint256 customLimit = 500 ether;
         vm.prank(owner);
-        rateLimiting.setAccountConfig(
-            user1,
-            12 hours,
-            customLimit,
-            RateLimiting.AccountStatus.OPT_IN
-        );
+        rateLimiting.setAccountConfig(user1, 12 hours, customLimit, RateLimiting.AccountStatus.OPT_IN);
 
         // Should have custom limit available
         uint256 available = rateLimiting.availableToTransfer(user1);
         assertEq(available, customLimit);
 
-        console.log(
-            "availableToTransfer for OPT_IN with custom limit working correctly"
-        );
+        console.log("availableToTransfer for OPT_IN with custom limit working correctly");
     }
 
     function testAvailableToTransferZeroInterval() public {
@@ -995,12 +818,7 @@ contract RateLimitingTest is Test {
         // Set user to OPT_IN with custom interval
         uint256 customInterval = 12 hours;
         vm.prank(owner);
-        rateLimiting.setAccountConfig(
-            user1,
-            customInterval,
-            500 ether,
-            RateLimiting.AccountStatus.OPT_IN
-        );
+        rateLimiting.setAccountConfig(user1, customInterval, 500 ether, RateLimiting.AccountStatus.OPT_IN);
 
         // Transfer to create active window
         vm.prank(user1);
@@ -1012,9 +830,7 @@ contract RateLimitingTest is Test {
         uint256 nextWindow = rateLimiting.nextWindowAt(user1);
         assertEq(nextWindow, expectedNextWindow);
 
-        console.log(
-            "nextWindowAt for OPT_IN with custom interval working correctly"
-        );
+        console.log("nextWindowAt for OPT_IN with custom interval working correctly");
     }
 
     function testNextWindowAtZeroInterval() public {
@@ -1045,15 +861,11 @@ contract RateLimitingTest is Test {
         assertEq(token.balanceOf(user2), 10500 ether);
 
         // Verify no usage was tracked (windowId should still be 0)
-        (uint256 cumulative, uint256 windowId) = rateLimiting.currentUsage(
-            smallUser
-        );
+        (uint256 cumulative, uint256 windowId) = rateLimiting.currentUsage(smallUser);
         assertEq(cumulative, 0);
         assertEq(windowId, 0);
 
-        console.log(
-            "Small wallet optimization: balance <= rateLimit bypasses rate limiting"
-        );
+        console.log("Small wallet optimization: balance <= rateLimit bypasses rate limiting");
     }
 
     function testSmallWalletOptimizationActiveWindow() public {
@@ -1068,15 +880,11 @@ contract RateLimitingTest is Test {
         vm.prank(smallUser);
         token.transfer(user2, 200 ether);
 
-        (uint256 cumulative, uint256 windowId) = rateLimiting.currentUsage(
-            smallUser
-        );
+        (uint256 cumulative, uint256 windowId) = rateLimiting.currentUsage(smallUser);
         assertEq(cumulative, 0);
         assertEq(windowId, currentWindowId);
 
-        console.log(
-            "Small wallet optimization: zero usage in active window bypasses rate limiting"
-        );
+        console.log("Small wallet optimization: zero usage in active window bypasses rate limiting");
     }
 
     function testSmallWalletOptimizationNewWindow() public {
@@ -1093,14 +901,10 @@ contract RateLimitingTest is Test {
         vm.prank(smallUser);
         token.transfer(user2, 200 ether);
 
-        (uint256 cumulative, uint256 windowId) = rateLimiting.currentUsage(
-            smallUser
-        );
+        (uint256 cumulative, uint256 windowId) = rateLimiting.currentUsage(smallUser);
         assertEq(cumulative, 300 ether);
         assertEq(windowId, previousWindowId);
 
-        console.log(
-            "Small wallet optimization: no active window with prior usage bypasses rate limiting"
-        );
+        console.log("Small wallet optimization: no active window with prior usage bypasses rate limiting");
     }
 }
