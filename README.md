@@ -4,6 +4,8 @@
 
 CL8Y (Ceramic Liberty) is a deflationary token designed to sustainably fund open-source blockchain development. Created by Ceramic, a blockchain developer with extensive experience since 2018, CL8Y implements an innovative tokenomic model that aligns the interests of open-source projects, developers, and token holders.
 
+NOTE: AccessManger BSC updated to enumerable implementation at `0x745120275A70693cc1D55cD5C81e99b0D2C1dF57`
+
 AccessManager BSC: `0x5823a01A5372B779cB091e47DBBb176F2831b4c7`
 DatastoreSetAddress BSC: `0x8a18c91387149806BE5F7c1ebc6fE99e12d183dA`
 GuardERC20 BSC: `0x417580DF7eE35FFA6286255b55B456c992657fB9`
