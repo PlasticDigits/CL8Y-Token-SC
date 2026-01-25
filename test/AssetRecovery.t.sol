@@ -8,7 +8,7 @@ import {IBlacklist} from "../src/interfaces/IBlacklist.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
-import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 
 contract MockERC20 is ERC20 {
     constructor() ERC20("Mock Token", "MOCK") {}
@@ -168,7 +168,7 @@ contract AssetRecoveryTest is Test {
         vm.prank(unauthorized);
         vm.expectRevert(
             abi.encodeWithSelector(
-                AccessManaged.AccessManagedUnauthorized.selector,
+                IAccessManaged.AccessManagedUnauthorized.selector,
                 unauthorized
             )
         );
