@@ -1,0 +1,8 @@
+when:
+  - event: [push, manual, pull_request]
+
+steps:
+  - name: tree
+    image: alpine:3.20
+    commands:
+      - test -n "$(find . -type f ! -path './.git/*' | head -1)"
