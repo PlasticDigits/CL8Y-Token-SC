@@ -12,7 +12,7 @@ Protected `main` is the only release branch. The merge contract is:
 | --- | --- |
 | Direct push | Off (`enable_push: false`) |
 | Status check | `ci/woodpecker/pr/woodpecker` required |
-| Official CODEOWNERS review | Not a merge gate; no catch-all `CODEOWNERS` file |
+| Official CODEOWNERS review | Not a merge gate. No file at `CODEOWNERS`, `docs/CODEOWNERS`, or `.forgejo/CODEOWNERS`. |
 | `force_merge` | Forbidden |
 | Approvals | `required_approvals: 0`; rejected reviews still block |
 
@@ -24,7 +24,9 @@ This product tree does not PATCH Forgejo protection and does not edit CAC.
 
 Branch protection is operator-owned. Product PRs must not reintroduce
 `CODEOWNERS`, `docs/CODEOWNERS`, or `.forgejo/CODEOWNERS` (Forgejo lookup
-paths; Go-regexp, not GitHub globs).
+paths; Go-regexp, not GitHub globs). Land vehicle for ADR 0001 is occupying
+pull `#3`; `cac-design-issue-3` is design transport only (do not merge it
+to `main`).
 
 ## On-chain (pointer only)
 
