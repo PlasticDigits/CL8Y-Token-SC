@@ -5,8 +5,10 @@ out/
 # Ignores broadcast
 broadcast/
 
-# Docs
-docs/
+# Foundry `forge doc` output (repo-native architecture under docs/ stays tracked)
+docs/book/
+docs/src/
+docs/book.toml
 
 # Dotenv file
 .env
