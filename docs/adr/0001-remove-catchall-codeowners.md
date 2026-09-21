@@ -1,6 +1,6 @@
 # ADR 0001: Remove catch-all CODEOWNERS
 
-Status: **Proposed** — [#3](https://git.cl8y.com/code/CL8Y-Token-SC/issues/3).
+Status: **Accepted** — [#3](https://git.cl8y.com/code/CL8Y-Token-SC/issues/3).
 Keywords in that issue are not architecture approval. Ordinary design is not
 a founder card. This ADR does not authorize deploy, spend, custody rotation,
 or Forgejo protection PATCH

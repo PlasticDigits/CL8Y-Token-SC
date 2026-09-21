@@ -24,9 +24,10 @@ This product tree does not PATCH Forgejo protection and does not edit CAC.
 
 Branch protection is operator-owned. Product PRs must not reintroduce
 `CODEOWNERS`, `docs/CODEOWNERS`, `.gitea/CODEOWNERS`, or `.forgejo/CODEOWNERS`
-(Forgejo first-existing lookup; Go-regexp, not GitHub globs). Land vehicle
-for ADR 0001 is occupying pull `#3`; `cac-design-issue-3` is design
-transport only (do not merge it to `main`).
+(Forgejo first-existing lookup; Go-regexp, not GitHub globs). Root `CODEOWNERS` removal landed in pull `#3`; merge-plane docs and Woodpecker
+`no-catchall-codeowners` complete ADR 0001 on `main` via follow-up PR head
+`issue/3`. `cac-design-issue-3` is design transport only (do not merge it to
+`main`).
 
 ## On-chain (pointer only)
 
