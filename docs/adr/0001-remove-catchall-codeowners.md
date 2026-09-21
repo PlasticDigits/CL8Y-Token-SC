@@ -147,9 +147,11 @@ Land vehicle is existing pull `#3` (`chore/remove-catchall-codeowners`).
 `cac-design-issue-3` / `7956d2b` and successor design SHAs on that branch
 are design transport only: do not open it as a PR and do not merge it to
 `main`. Implement cherry-picks the accepted design commit(s) onto `0f5c87a`
-(additive; `7956d2b` then this revision, or equivalent). The cherry-pick
-must not restore `CODEOWNERS`. After slices 1–3 the occupying tip has: file
-absent, these docs, `.gitignore` carve-out, and the Alpine step in slice 3.
+(additive, in order: `7956d2b`, `7e66bf0`, then this four-path revision, or
+equivalent range). Skipping `7e66bf0` drops the Alpine pin and transport
+rules. The cherry-pick must not restore a file at any of the four lookup
+paths. After slices 1–3 the occupying tip has: all four paths absent, these
+docs, `.gitignore` carve-out, and the Alpine step in slice 3.
 
 Open PRs opened while root `CODEOWNERS` existed may still show a leftover
 official request. Implement does **not** dismiss them — including the live
