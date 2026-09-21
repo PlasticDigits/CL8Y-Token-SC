@@ -146,12 +146,18 @@ Git only. No contract migration, no Coolify, no token move.
 Land vehicle is existing pull `#3` (`chore/remove-catchall-codeowners`).
 `cac-design-issue-3` / `7956d2b` and successor design SHAs on that branch
 are design transport only: do not open it as a PR and do not merge it to
-`main`. Implement cherry-picks the accepted design commit(s) onto `0f5c87a`
-(additive, in order: `7956d2b`, `7e66bf0`, then this four-path revision, or
-equivalent range). Skipping `7e66bf0` drops the Alpine pin and transport
-rules. The cherry-pick must not restore a file at any of the four lookup
-paths. After slices 1–3 the occupying tip has: all four paths absent, these
-docs, `.gitignore` carve-out, and the Alpine step in slice 3.
+`main`. Implement cherry-picks the accepted design commits onto `0f5c87a`
+**in order:** `7956d2b`, `7e66bf0`,
+`d01f4c169bced8e96cdb36490d237922d4bd8ba4` (four-path Outcome, slice 3
+YAML, and `architecture.md`),
+`b639bd13c597393f4e3a862d47f1310db2d9f2d2`, then this Migration pin.
+Equivalent: `git cherry-pick 7956d2b^..` this commit. **Skipping
+`d01f4c1` restores three-path CI and reopens the `.gitea/CODEOWNERS`
+plant.** Skipping `7e66bf0` drops the Alpine pin and transport rules.
+Slice 3's Woodpecker step is **not** in those commits and must still be
+added on `#3`. The cherry-pick must not restore a file at any of the four
+lookup paths. After slices 1–3 the occupying tip has: all four paths
+absent, these docs, `.gitignore` carve-out, and the Alpine step in slice 3.
 
 Open PRs opened while root `CODEOWNERS` existed may still show a leftover
 official request. Implement does **not** dismiss them — including the live
@@ -199,7 +205,8 @@ need no extra `Fixes #3` (the pull **is** iid 3).
    prefer additive commits on that head.)
 2. **Preserve design + gitignore** — keep this ADR, `docs/architecture.md`,
    and the `.gitignore` carve-out on the occupying head via cherry-pick of
-   accepted `cac-design-issue-3` commit(s) onto `0f5c87a`.
+   accepted `cac-design-issue-3` commits onto `0f5c87a` in the Migration
+   order (must include `d01f4c1`).
 3. **CI assertion** — add this step to `.woodpecker.yml`; do not change the
    existing `tree` step; do not add `scripts/`; do not `apk add`; do not
    POST statuses:
@@ -215,7 +222,8 @@ need no extra `Fixes #3` (the pull **is** iid 3).
 ```
 
 Slice 1 before 3. Slice 2 is the design transport (`cac-design-issue-3`);
-implement cherry-picks it onto `#3`. No CAC or forge-script slice.
+implement cherry-picks it onto `#3` per Migration. Slice 3's YAML is **not**
+in the design commits; add it on `#3`. No CAC or forge-script slice.
 
 ## Tests
 
