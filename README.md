@@ -37,6 +37,8 @@ CL8Y v2 features a revolutionary **modular design** that separates core token fu
 - **Optional Guard Modules**:
   - Blacklist protection
   - Rate limiting
+  - [Guard-wide emergency pause](PAUSE_GUARD.md), with separate pause-only
+    authority and governance recovery after explicit admission
   - Custom restrictions as needed
 - **No Built-in Restrictions**: Clean token by default - modules only added when specifically needed
 - **Dynamic Management**: Security features can be modified without affecting the core token
